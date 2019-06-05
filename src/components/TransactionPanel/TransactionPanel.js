@@ -39,6 +39,9 @@ import PanelHeading, {
   HEADING_DELIVERED,
 } from './PanelHeading';
 
+// Import InvalidPriceMessageMaybe
+import InvalidPriceMessageMaybe from './InvalidPriceMessageMaybe';
+
 import css from './TransactionPanel.css';
 
 // Helper function to get display names for different roles
@@ -334,6 +337,12 @@ export class TransactionPanelComponent extends Component {
                 showAddress={stateData.showAddress}
               />
               <BreakdownMaybe transaction={currentTransaction} transactionRole={transactionRole} />
+              <InvalidPriceMessageMaybe
+                transaction={currentTransaction}
+                listing={currentListing}
+                transactionRole={transactionRole}
+                intl={intl}
+              />
             </div>
 
             <FeedSection
@@ -407,7 +416,12 @@ export class TransactionPanelComponent extends Component {
                 transaction={currentTransaction}
                 transactionRole={transactionRole}
               />
-
+              <InvalidPriceMessageMaybe
+                transaction={currentTransaction}
+                listing={currentListing}
+                transactionRole={transactionRole}
+                intl={intl}
+              />
               {stateData.showSaleButtons ? (
                 <div className={css.desktopActionButtons}>{saleButtons}</div>
               ) : null}

@@ -9,8 +9,14 @@ import { required, bookingDatesRequired, composeValidators } from '../../util/va
 import { START_DATE, END_DATE } from '../../util/dates';
 import { propTypes } from '../../util/types';
 import config from '../../config';
-import { Form, PrimaryButton, FieldDateRangeInput } from '../../components';
+import { 
+  Form, 
+  PrimaryButton, 
+  FieldDateRangeInput, 
+  FieldCheckbox
+   } from '../../components';
 import EstimatedBreakdownMaybe from './EstimatedBreakdownMaybe';
+import { formatMoney } from '../../util/currency';
 
 import css from './BookingDatesForm.css';
 
@@ -20,6 +26,7 @@ export class BookingDatesFormComponent extends Component {
     this.state = { focusedInput: null };
     this.handleFormSubmit = this.handleFormSubmit.bind(this);
     this.onFocusedInputChange = this.onFocusedInputChange.bind(this);
+     
   }
 
   // Function that can be passed to nested components
@@ -46,7 +53,7 @@ export class BookingDatesFormComponent extends Component {
   }
 
   render() {
-    const { rootClassName, className, price: unitPrice, ...rest } = this.props;
+    const { rootClassName, className, price: unitPrice, upsellFee, ...rest } = this.props;
     const classes = classNames(rootClassName || css.root, className);
 
     if (!unitPrice) {
@@ -88,7 +95,33 @@ export class BookingDatesFormComponent extends Component {
             timeSlots,
             fetchTimeSlotsError,
           } = fieldRenderProps;
-          const { startDate, endDate } = values && values.bookingDates ? values.bookingDates : {};
+
+          //Resolves the upsell fee input's value from the form's value object
+          const selectedUpsellFee =
+            values &&
+            values.additionalItems &&
+            values.additionalItems.find(i => i === 'upsellFee')
+              ? upsellFee
+              : null;
+
+          const { startDate, endDate } = values && values.bookingDates ? values.bookingDates : {};              
+          // This is the place to collect breakdown estimation data. See the
+          // EstimatedBreakdownMaybe component to change the calculations
+          // for customized payment processes.
+          const bookingData =
+            startDate && endDate
+              ? {
+                  unitType,
+                  unitPrice,
+                  startDate,
+                  endDate,
+
+                  // NOTE: If unitType is `line-item/units`, a new picker
+                  // for the quantity should be added to the form.
+                  quantity: 1,
+                  upsellFee: selectedUpsellFee
+                }
+              : null;
 
           const bookingStartLabel = intl.formatMessage({
             id: 'BookingDatesForm.bookingStartTitle',
@@ -107,22 +140,6 @@ export class BookingDatesFormComponent extends Component {
             </p>
           ) : null;
 
-          // This is the place to collect breakdown estimation data. See the
-          // EstimatedBreakdownMaybe component to change the calculations
-          // for customized payment processes.
-          const bookingData =
-            startDate && endDate
-              ? {
-                  unitType,
-                  unitPrice,
-                  startDate,
-                  endDate,
-
-                  // NOTE: If unitType is `line-item/units`, a new picker
-                  // for the quantity should be added to the form.
-                  quantity: 1,
-                }
-              : null;
           const bookingInfo = bookingData ? (
             <div className={css.priceBreakdownContainer}>
               <h3 className={css.priceBreakdownTitle}>
@@ -152,6 +169,11 @@ export class BookingDatesFormComponent extends Component {
             submitButtonWrapperClassName || css.submitButtonWrapper
           );
 
+          const upsellFeeLabel = intl.formatMessage({
+            id: 'BookingDatesForm.upsellFee',
+          });
+
+
           return (
             <Form onSubmit={handleSubmit} className={classes}>
               {timeSlotsError}
@@ -175,6 +197,20 @@ export class BookingDatesFormComponent extends Component {
                   bookingDatesRequired(startDateErrorMessage, endDateErrorMessage)
                 )}
               />
+
+              {upsellFee ? (
+                <div className={css.upsellFee}>
+                  <FieldCheckbox
+                    className={css.upsellFeeLabel}
+                    id={`${form}.upsellFee`}
+                    label={upsellFeeLabel}
+                    name={'additionalItems'}
+                    value={'upsellFee'}
+                  />
+                  <span className={css.upsellFeeAmount}>{formatMoney(intl, upsellFee)}</span>
+                </div>
+              ) : null}              
+
               {bookingInfo}
               <p className={css.smallPrint}>
                 <FormattedMessage
@@ -207,6 +243,7 @@ BookingDatesFormComponent.defaultProps = {
   startDatePlaceholder: null,
   endDatePlaceholder: null,
   timeSlots: null,
+  upsellFee: null
 };
 
 BookingDatesFormComponent.propTypes = {

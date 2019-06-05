@@ -34,16 +34,28 @@ import { TRANSITION_REQUEST, TX_TRANSITION_ACTOR_CUSTOMER } from '../../util/tra
 import { LINE_ITEM_DAY, LINE_ITEM_NIGHT, LINE_ITEM_UNITS } from '../../util/types';
 import { unitDivisor, convertMoneyToNumber, convertUnitToSubUnit } from '../../util/currency';
 import { BookingBreakdown } from '../../components';
+import { LINE_ITEM_UPSELL_FEE } from '../../util/types.js';
 
 import css from './BookingDatesForm.css';
 
 const { Money, UUID } = sdkTypes;
 
-const estimatedTotalPrice = (unitPrice, unitCount) => {
+const estimatedTotalPrice = (unitPrice, unitCount, upsellFee) => {
   const numericPrice = convertMoneyToNumber(unitPrice);
-  const numericTotalPrice = new Decimal(numericPrice).times(unitCount).toNumber();
+  const upsellFeePrice = upsellFee
+    ? convertMoneyToNumber(upsellFee)
+    : null;
+  const numericTotalPrice = upsellFeePrice
+    ? new Decimal(numericPrice)
+        .times(unitCount)
+        .plus(upsellFeePrice)
+        .toNumber()
+    : new Decimal(numericPrice).times(unitCount).toNumber();
   return new Money(
-    convertUnitToSubUnit(numericTotalPrice, unitDivisor(unitPrice.currency)),
+    convertUnitToSubUnit(
+      numericTotalPrice,
+      unitDivisor(unitPrice.currency)
+    ),
     unitPrice.currency
   );
 };
@@ -51,7 +63,7 @@ const estimatedTotalPrice = (unitPrice, unitCount) => {
 // When we cannot speculatively initiate a transaction (i.e. logged
 // out), we must estimate the booking breakdown. This function creates
 // an estimated transaction object for that use case.
-const estimatedTransaction = (unitType, bookingStart, bookingEnd, unitPrice, quantity) => {
+const estimatedTransaction = (unitType, bookingStart, bookingEnd, unitPrice, quantity, upsellFee) => {
   const now = new Date();
   const isNightly = unitType === LINE_ITEM_NIGHT;
   const isDaily = unitType === LINE_ITEM_DAY;
@@ -62,7 +74,7 @@ const estimatedTransaction = (unitType, bookingStart, bookingEnd, unitPrice, qua
     ? daysBetween(bookingStart, bookingEnd)
     : quantity;
 
-  const totalPrice = estimatedTotalPrice(unitPrice, unitCount);
+  const totalPrice = estimatedTotalPrice(unitPrice, unitCount, upsellFee);
 
   // bookingStart: "Fri Mar 30 2018 12:00:00 GMT-1100 (SST)" aka "Fri Mar 30 2018 23:00:00 GMT+0000 (UTC)"
   // Server normalizes night/day bookings to start from 00:00 UTC aka "Thu Mar 29 2018 13:00:00 GMT-1100 (SST)"
@@ -80,6 +92,32 @@ const estimatedTransaction = (unitType, bookingStart, bookingEnd, unitPrice, qua
       .toDate()
   );
 
+  //Line items list resolved as follows
+  const upsellFeeLineItem = {
+    code: LINE_ITEM_UPSELL_FEE,
+    includeFor: ['customer', 'provider'],
+    unitPrice: upsellFee,
+    quantity: new Decimal(1),
+    lineTotal: upsellFee,
+    reversal: false,
+  };
+
+  const upsellFeeLineItemMaybe = upsellFee
+    ? [upsellFeeLineItem]
+    : [];
+
+  const lineItems = [
+    ...upsellFeeLineItemMaybe,
+    {
+      code: unitType,
+      includeFor: ['customer', 'provider'],
+      unitPrice: unitPrice,
+      quantity: new Decimal(unitCount),
+      lineTotal: totalPrice,
+      reversal: false,
+    },
+  ];
+
   return {
     id: new UUID('estimated-transaction'),
     type: 'transaction',
@@ -89,16 +127,7 @@ const estimatedTransaction = (unitType, bookingStart, bookingEnd, unitPrice, qua
       lastTransition: TRANSITION_REQUEST,
       payinTotal: totalPrice,
       payoutTotal: totalPrice,
-      lineItems: [
-        {
-          code: unitType,
-          includeFor: ['customer', 'provider'],
-          unitPrice: unitPrice,
-          quantity: new Decimal(unitCount),
-          lineTotal: totalPrice,
-          reversal: false,
-        },
-      ],
+      lineItems: lineItems,
       transitions: [
         {
           createdAt: now,
@@ -119,7 +148,7 @@ const estimatedTransaction = (unitType, bookingStart, bookingEnd, unitPrice, qua
 };
 
 const EstimatedBreakdownMaybe = props => {
-  const { unitType, unitPrice, startDate, endDate, quantity } = props.bookingData;
+  const { unitType, unitPrice, startDate, endDate, quantity, upsellFee } = props.bookingData;
   const isUnits = unitType === LINE_ITEM_UNITS;
   const quantityIfUsingUnits = !isUnits || Number.isInteger(quantity);
   const canEstimatePrice = startDate && endDate && unitPrice && quantityIfUsingUnits;
@@ -127,7 +156,7 @@ const EstimatedBreakdownMaybe = props => {
     return null;
   }
 
-  const tx = estimatedTransaction(unitType, startDate, endDate, unitPrice, quantity);
+  const tx = estimatedTransaction(unitType, startDate, endDate, unitPrice, quantity, upsellFee);
 
   return (
     <BookingBreakdown

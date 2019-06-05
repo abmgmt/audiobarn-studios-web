@@ -44,9 +44,58 @@ import config from '../../config';
 import { storeData, storedData, clearData } from './CheckoutPageSessionHelpers';
 import css from './CheckoutPage.css';
 
+import { nightsBetween, daysBetween } from '../../util/dates';
+import { types as sdkTypes } from '../../util/sdkLoader';
+import { LINE_ITEM_UPSELL_FEE } from '../../util/types.js';
+
 const STORAGE_KEY = 'CheckoutPage';
+const { Money } = sdkTypes;
 
 export class CheckoutPageComponent extends Component {
+  /**
+   * Constructs a request params object that can be used when creating bookings
+   * using custom pricing.
+   * @param {} params An object that contains bookingStart, bookingEnd and listing
+   * @return a params object for custom pricing bookings
+   */
+
+  customPricingParams(params) {
+    const { bookingStart, bookingEnd, listing, upsellFee, ...rest } = params;
+    const { amount, currency } = listing.attributes.price;
+
+    const unitType = config.bookingUnitType;
+    const isNightly = unitType === LINE_ITEM_NIGHT;
+
+    const quantity = isNightly
+      ? nightsBetween(bookingStart, bookingEnd)
+      : daysBetween(bookingStart, bookingEnd);
+
+    const upsellFeeLineItem = upsellFee
+      ? {
+          code: LINE_ITEM_UPSELL_FEE,
+          unitPrice: upsellFee,
+          quantity: 1,
+        }
+      : null;
+
+    const upsellFeeLineItemMaybe = upsellFeeLineItem ? [upsellFeeLineItem] : [];
+
+
+    return {
+      listingId: listing.id,
+      bookingStart,
+      bookingEnd,
+      lineItems: [
+        ...upsellFeeLineItemMaybe,
+        {
+          code: unitType,
+          unitPrice: new Money(amount, currency),
+          quantity,
+        },
+      ],
+      ...rest,
+    };
+  }
   constructor(props) {
     super(props);
 
@@ -126,14 +175,20 @@ export class CheckoutPageComponent extends Component {
       const bookingStartForAPI = dateFromLocalToAPI(bookingStart);
       const bookingEndForAPI = dateFromLocalToAPI(bookingEnd);
 
+      const upsellFee = pageData.bookingData.upsellFee;
+
       // Fetch speculated transaction for showing price in booking breakdown
       // NOTE: if unit type is line-item/units, quantity needs to be added.
       // The way to pass it to checkout page is through pageData.bookingData
-      fetchSpeculatedTransaction({
-        listingId,
-        bookingStart: bookingStartForAPI,
-        bookingEnd: bookingEndForAPI,
-      });
+      fetchSpeculatedTransaction(
+        this.customPricingParams({
+          listing,
+          bookingStart: bookingStartForAPI,
+          bookingEnd: bookingEndForAPI,
+          upsellFee,
+        })
+      );
+      
     }
 
     this.setState({ pageData: pageData || {}, dataLoaded: true });
@@ -155,15 +210,23 @@ export class CheckoutPageComponent extends Component {
       dispatch,
     } = this.props;
 
+    const upsellFeeLineItem = speculatedTransaction.attributes.lineItems.find(
+      item => item.code === LINE_ITEM_UPSELL_FEE
+    );
+    const upsellFee = upsellFeeLineItem
+      ? upsellFeeLineItem.unitPrice
+      : null;
+
     // Create order aka transaction
     // NOTE: if unit type is line-item/units, quantity needs to be added.
     // The way to pass it to checkout page is through pageData.bookingData
-    const requestParams = {
-      listingId: this.state.pageData.listing.id,
+    const requestParams = this.customPricingParams({
+      listing: this.state.pageData.listing,
       cardToken,
       bookingStart: speculatedTransaction.booking.attributes.start,
       bookingEnd: speculatedTransaction.booking.attributes.end,
-    };
+      upsellFee,
+    });
 
     const enquiredTransaction = this.state.pageData.enquiredTransaction;
 

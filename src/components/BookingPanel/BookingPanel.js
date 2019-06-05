@@ -12,8 +12,12 @@ import { parse, stringify } from '../../util/urlHelpers';
 import config from '../../config';
 import { ModalInMobile, Button } from '../../components';
 import { BookingDatesForm } from '../../forms';
+import { types as sdkTypes } from '../../util/sdkLoader';
 
 import css from './BookingPanel.css';
+
+// For adding upsell fee option in booking form
+const { Money } = sdkTypes;
 
 // This defines when ModalInMobile shows content as Modal
 const MODAL_BREAKPOINT = 1023;
@@ -68,6 +72,29 @@ const BookingPanel = props => {
     intl,
   } = props;
 
+  //Resolves the the price of the upsell fee if one is defined for the current listing
+  const upsellFeeData = listing.attributes.publicData.upsellFee;  
+  const { amount: upsellAmount, currency: upsellCurrency } =
+    upsellFeeData || {};
+  const upsellFee =
+    upsellAmount && upsellCurrency
+      ? new Money(upsellAmount, upsellCurrency)
+      : null;
+
+  //Converts a checkbox form value into the actual upsell fee of this listing
+  const handleSubmit = values => {
+    const selectedUpsellFee =
+      values &&
+      values.additionalItems &&
+      values.additionalItems[0] === 'upsellFee'
+        ? upsellFee
+        : null;
+    onSubmit({
+      ...values,
+         upsellFee: selectedUpsellFee
+    });
+  };
+
   const price = listing.attributes.price;
   const hasListingState = !!listing.attributes.state;
   const isClosed = hasListingState && listing.attributes.state === LISTING_STATE_CLOSED;
@@ -120,11 +147,12 @@ const BookingPanel = props => {
             className={css.bookingForm}
             submitButtonWrapperClassName={css.bookingDatesSubmitButtonWrapper}
             unitType={unitType}
-            onSubmit={onSubmit}
+            onSubmit={handleSubmit}
             price={price}
             isOwnListing={isOwnListing}
             timeSlots={timeSlots}
             fetchTimeSlotsError={fetchTimeSlotsError}
+            upsellFee={upsellFee}
           />
         ) : null}
       </ModalInMobile>
