@@ -77,7 +77,7 @@ const usingSSL = process.env.REACT_APP_SHARETRIBE_USING_SSL === 'true';
 // Address information is used in SEO schema for Organization (http://schema.org/PostalAddress)
 const addressCountry = 'CA';
 const addressRegion = 'Montreal';
-const postalCode = 'H3B5J8';
+const postalCode = 'H3H5J8';
 const streetAddress = '987 Rue de la Gauchetiere Ouest';
 
 // Canonical root url is needed in social media sharing and SEO optimization purposes.
@@ -87,13 +87,13 @@ const canonicalRootURL = process.env.REACT_APP_CANONICAL_ROOT_URL;
 const siteTitle = 'JAMinTime Booking System';
 
 // Twitter handle is needed in meta tags (twitter:site). Start it with '@' character
-const siteTwitterHandle = '@sharetribe';
+const siteTwitterHandle = null;
 
 // Instagram page is used in SEO schema (http://schema.org/Organization)
-const siteInstagramPage = null;
+const siteInstagramPage = 'https://www.instagram.com/Audiobarn_mtl/';
 
 // Facebook page is used in SEO schema (http://schema.org/Organization)
-const siteFacebookPage = 'https://www.facebook.com/Sharetribe/';
+const siteFacebookPage = 'https://www.facebook.com/Audiobarn.ca/';
 
 // Facebook counts shares with app or page associated by this id
 // Currently it is unset, but you can read more about fb:app_id from
