@@ -7,14 +7,6 @@ export const amenities = [
     key: 'audio-engineer',
     label: 'Audio Engineer Included',
   },
-  {
-    key: 'parking-studio',
-    label: 'Studio Parking Available',
-  },
-  {
-    key: 'parking-nearby',
-    label: 'Parking Available Nearby',
-  },  
 ];
 
 export const categories = [
