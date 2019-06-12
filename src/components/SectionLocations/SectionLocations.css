@@ -87,6 +87,7 @@
 .linkText {
   @apply --marketplaceH2FontStyles;
   color: var(--matterColor);
+  text-shadow: -1px 1px 1px #e6e6e6;
   margin-top: 15px;
   margin-bottom: 0;
 

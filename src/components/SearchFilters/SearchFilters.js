@@ -220,7 +220,6 @@ const SearchFiltersComponent = props => {
         {categoryFilterElement}
         {amenitiesFilterElement}
         {priceFilterElement}
-        {dateRangeFilterElement}
         {toggleSearchFiltersPanelButton}
       </div>
 
