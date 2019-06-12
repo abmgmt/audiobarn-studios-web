@@ -55,12 +55,13 @@ const estimatedTransaction = (unitType, bookingStart, bookingEnd, unitPrice, qua
   const now = new Date();
   const isNightly = unitType === LINE_ITEM_NIGHT;
   const isDaily = unitType === LINE_ITEM_DAY;
+  const isUnits = unitType === LINE_ITEM_UNITS;
 
   const unitCount = isNightly
     ? nightsBetween(bookingStart, bookingEnd)
-    : isDaily
-    ? daysBetween(bookingStart, bookingEnd)
-    : quantity;
+    : isUnits
+      ? daysBetween(bookingStart, bookingEnd)
+      : quantity;
 
   const totalPrice = estimatedTotalPrice(unitPrice, unitCount);
 
