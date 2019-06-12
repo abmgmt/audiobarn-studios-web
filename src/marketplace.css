@@ -162,7 +162,6 @@
     font-size: 18px;
     line-height: 24px;
     letter-spacing: -0.3px;
-    text-shadow: -0.5px 0.5px 1px #808080;
 
     @media (--viewportMedium) {
       /* TODO: Make sure button text aligns with the baseline */
